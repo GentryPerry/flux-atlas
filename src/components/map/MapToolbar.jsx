@@ -49,8 +49,8 @@ export default function MapToolbar({
   return (
     <div className="toolbar">
       {/* Logo & Home */}
-      <button className="toolbar-brand" onClick={() => setActiveCampaign(null)} title="Back to campaigns">
-        <img src="/logo/text-only.png" alt="Flux Atlas" className="toolbar-logo" />
+      <button className="toolbar-brand toolbar-brand-text" onClick={() => setActiveCampaign(null)} title="Back to campaigns">
+        Flux Atlas
       </button>
 
       <div className="toolbar-divider" />
@@ -76,17 +76,20 @@ export default function MapToolbar({
 
       {/* Node type palette */}
       <div className="node-palette">
-        {NODE_TYPE_BUTTONS.map(({ type, icon: Icon, label, color }) => (
-          <button
-            key={type}
-            className={`node-palette-btn ${placingType === type ? 'active' : ''}`}
-            onClick={() => setPlacingType(placingType === type ? null : type)}
-            title={`Place ${label}`}
-          >
-            <Icon size={18} color={placingType === type ? color : undefined} />
-            <span>{label}</span>
-          </button>
-        ))}
+        {NODE_TYPE_BUTTONS.map((btn) => {
+          const BtnIcon = btn.icon;
+          return (
+            <button
+              key={btn.type}
+              className={`node-palette-btn ${placingType === btn.type ? 'active' : ''}`}
+              onClick={() => setPlacingType(placingType === btn.type ? null : btn.type)}
+              title={`Place ${btn.label}`}
+            >
+              <BtnIcon size={18} color={placingType === btn.type ? btn.color : undefined} />
+              <span>{btn.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="toolbar-divider" />

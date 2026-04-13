@@ -36,11 +36,12 @@ export default function NodeIcon({ node, size = 20, showOverlays = true }) {
   const iconName = node.icon || schema?.icon || 'Cube';
   const IconComponent = ICON_MAP[iconName] || Cube;
   const color = TYPE_COLORS[node.type] || 'var(--text-secondary)';
+  const hasAliveFlag = Boolean(schema?.statusFlags?.alive);
 
   return (
     <span style={{ position: 'relative', display: 'inline-flex' }}>
       <IconComponent size={size} weight="duotone" color={color} />
-      {showOverlays && node.statusFlags && !node.statusFlags.alive && (
+      {showOverlays && hasAliveFlag && node.statusFlags && !node.statusFlags.alive && (
         <Skull
           size={Math.round(size * 0.5)}
           weight="fill"

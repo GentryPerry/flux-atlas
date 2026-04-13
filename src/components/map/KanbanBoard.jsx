@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   UserCircle, MapPin, Shield, Cross, Lightning, Sword,
-  ArrowSquareIn, CaretDown,
 } from '@phosphor-icons/react';
 import useNodeStore from '../../stores/nodeStore';
 import useTagStore from '../../stores/tagStore';
@@ -36,6 +35,8 @@ export default function KanbanBoard({ groupBy = 'faction' }) {
   const createTag = useTagStore((s) => s.createTag);
   const [dragNodeId, setDragNodeId] = useState(null);
   const [groupMode, setGroupMode] = useState(groupBy);
+  const [memberMode, setMemberMode] = useState('character');
+  const [assignmentPrompt, setAssignmentPrompt] = useState(null);
 
   // Get all nodes on this map
   const mapNodes = useMemo(
@@ -51,12 +52,18 @@ export default function KanbanBoard({ groupBy = 'faction' }) {
   );
 
   // The field key on member nodes that points to the group
-  const fieldKey = groupType === 'faction' ? 'faction' : 'religion';
+  const fieldKey = groupType === 'faction'
+    ? 'faction'
+    : groupType === 'religion'
+      ? 'religion'
+      : 'politicalAllegiance';
 
-  // Member nodes are characters (NPCs) that can belong to groups
+  // Member nodes are configurable (NPC-only or NPC + Location)
   const memberNodes = useMemo(
-    () => mapNodes.filter((n) => n.type === 'character'),
-    [mapNodes]
+    () => mapNodes.filter((n) => memberMode === 'character'
+      ? n.type === 'character'
+      : n.type === 'character' || n.type === 'location'),
+    [mapNodes, memberMode]
   );
 
   // Build columns: each group node becomes a column
@@ -110,7 +117,7 @@ export default function KanbanBoard({ groupBy = 'faction' }) {
     const node = allNodes.find((n) => n.id === dragNodeId);
     if (!node) return;
 
-    const currentTags = node.fields?.[fieldKey] || [];
+    const currentTags = Array.isArray(node.fields?.[fieldKey]) ? node.fields[fieldKey] : [];
 
     if (columnId === '__unassigned__') {
       // Remove all group tags
@@ -127,17 +134,49 @@ export default function KanbanBoard({ groupBy = 'faction' }) {
         tagId = tag.id;
       }
       if (tagId && !currentTags.includes(tagId)) {
-        // Remove from other groups and add to this one
-        const otherTagIds = columns
-          .filter((c) => c.id !== columnId && c.tagId)
+        const columnTagIds = columns
+          .filter((c) => c.id !== '__unassigned__' && c.tagId)
           .map((c) => c.tagId);
-        const cleaned = currentTags.filter((id) => !otherTagIds.includes(id));
-        updateNodeFields(campaignId, dragNodeId, { [fieldKey]: [...cleaned, tagId] });
+        const hasExistingAssignment = currentTags.some((id) => columnTagIds.includes(id));
+
+        if (hasExistingAssignment) {
+          setAssignmentPrompt({
+            nodeId: dragNodeId,
+            nodeName: node.fields?.name || 'Unnamed',
+            targetName: col?.name || 'target column',
+            groupType,
+            fieldKey,
+            columnTagIds,
+            currentTags,
+            tagId,
+          });
+          setDragNodeId(null);
+          return;
+        } else {
+          // Unassigned -> assigned stays immediate with no prompt.
+          updateNodeFields(campaignId, dragNodeId, { [fieldKey]: [...currentTags, tagId] });
+        }
       }
     }
 
     setDragNodeId(null);
-  }, [dragNodeId, campaignId, allNodes, fieldKey, columns, tags, createTag, updateNodeFields]);
+  }, [dragNodeId, campaignId, allNodes, fieldKey, columns, tags, createTag, updateNodeFields, groupType]);
+
+  const handleAssignmentChoice = useCallback((mode) => {
+    if (!assignmentPrompt || !campaignId) return;
+    const {
+      nodeId, fieldKey: promptFieldKey, currentTags, columnTagIds, tagId,
+    } = assignmentPrompt;
+
+    if (mode === 'move') {
+      const cleaned = currentTags.filter((id) => !columnTagIds.includes(id));
+      updateNodeFields(campaignId, nodeId, { [promptFieldKey]: [...cleaned, tagId] });
+    } else if (mode === 'copy') {
+      updateNodeFields(campaignId, nodeId, { [promptFieldKey]: [...currentTags, tagId] });
+    }
+
+    setAssignmentPrompt(null);
+  }, [assignmentPrompt, campaignId, updateNodeFields]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -166,6 +205,28 @@ export default function KanbanBoard({ groupBy = 'faction' }) {
           style={groupMode === 'religion' ? { borderColor: 'var(--node-religion)', color: 'var(--node-religion)' } : {}}
         >
           Religion
+        </button>
+        <button
+          className={`card-filter-chip ${groupMode === 'realm' ? 'active' : ''}`}
+          onClick={() => setGroupMode('realm')}
+          style={groupMode === 'realm' ? { borderColor: 'var(--node-realm)', color: 'var(--node-realm)' } : {}}
+        >
+          Political
+        </button>
+        <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
+          Members:
+        </span>
+        <button
+          className={`card-filter-chip ${memberMode === 'character' ? 'active' : ''}`}
+          onClick={() => setMemberMode('character')}
+        >
+          NPC
+        </button>
+        <button
+          className={`card-filter-chip ${memberMode === 'mixed' ? 'active' : ''}`}
+          onClick={() => setMemberMode('mixed')}
+        >
+          NPC + Location
         </button>
       </div>
 
@@ -205,13 +266,36 @@ export default function KanbanBoard({ groupBy = 'faction' }) {
               })}
               {col.members.length === 0 && (
                 <div className="kanban-unassigned" style={{ padding: '12px 8px', fontSize: 12 }}>
-                  {col.id === '__unassigned__' ? 'NPCs without a group' : 'Drop NPCs here'}
+                  {col.id === '__unassigned__' ? 'Nodes without a group' : 'Drop nodes here'}
                 </div>
               )}
             </div>
           </div>
         ))}
       </div>
+
+      {assignmentPrompt && (
+        <div className="modal-overlay" style={{ zIndex: 70 }}>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <h2 style={{ marginBottom: 8 }}>Update assignment?</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
+              <strong>{assignmentPrompt.nodeName}</strong> already belongs to a {assignmentPrompt.groupType} column.
+              Do you want to move it to <strong>{assignmentPrompt.targetName}</strong> or copy it there too?
+            </p>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setAssignmentPrompt(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-secondary" onClick={() => handleAssignmentChoice('copy')}>
+                Add To (Copy)
+              </button>
+              <button className="btn btn-primary" onClick={() => handleAssignmentChoice('move')}>
+                Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

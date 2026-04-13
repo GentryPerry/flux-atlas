@@ -7,7 +7,6 @@ import {
 import useNodeStore from '../../stores/nodeStore';
 import useTagStore from '../../stores/tagStore';
 import useMapStore from '../../stores/mapStore';
-import useCampaignStore from '../../stores/campaignStore';
 import { NODE_TYPES } from '../../utils/nodeSchemas';
 
 const ICON_MAP = {
@@ -25,7 +24,6 @@ const TYPE_COLORS = {
 };
 
 export default function CardPanel() {
-  const campaignId = useCampaignStore((s) => s.activeCampaignId);
   const activeMapId = useMapStore((s) => s.activeMapId);
   const allNodes = useNodeStore((s) => s.nodes);
   const selectedNodeId = useNodeStore((s) => s.selectedNodeId);

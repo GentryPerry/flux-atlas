@@ -227,6 +227,28 @@ label {
   flex-direction: column;
   overflow: hidden;
 }
+.sidebar-shell {
+  position: relative;
+  display: flex;
+}
+.sidebar-shell.collapsed .sidebar {
+  width: 0;
+  min-width: 0;
+  border-right: none;
+}
+.sidebar-collapse-btn {
+  position: absolute;
+  right: -10px;
+  top: 60px;
+  z-index: 30;
+  width: 20px;
+  height: 44px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border: 1px solid var(--border-strong);
+  border-left: none;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
 
 .main-content {
   flex: 1;
@@ -360,6 +382,14 @@ label {
   border-radius: var(--radius);
   cursor: pointer;
   transition: all var(--transition);
+}
+.toolbar-brand-text {
+  font-family: 'POI Aeronaut', 'Inter', sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  padding: 2px 8px 0;
 }
 .toolbar-brand:hover { background: var(--bg-hover); }
 .toolbar-logo {
@@ -1181,6 +1211,28 @@ label {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
+}
+
+.territory-panel {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 280px;
+  background: rgba(22, 24, 32, 0.94);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 10px;
+  z-index: 25;
+  box-shadow: var(--shadow);
+}
+
+.territory-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 8px;
 }
 .map-legend-dot {
   width: 10px;

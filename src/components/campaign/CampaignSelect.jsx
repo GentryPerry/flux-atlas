@@ -10,7 +10,7 @@ export default function CampaignSelect() {
 
   const handleCreate = () => {
     if (!name.trim()) return;
-    const campaign = createCampaign(name.trim(), description.trim());
+    createCampaign(name.trim(), description.trim());
     setName('');
     setDescription('');
     setShowModal(false);
@@ -26,7 +26,6 @@ export default function CampaignSelect() {
   return (
     <div className="campaign-select">
       <img src="/logo/white-logo.png" alt="Flux Atlas" className="splash-logo" />
-      <p className="subtitle">Campaign World Manager</p>
 
       <div className="campaign-grid">
         {campaigns.map((c) => (
