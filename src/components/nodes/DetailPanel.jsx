@@ -258,7 +258,7 @@ export default function DetailPanel() {
             }
 
             if (field.type === 'tags') {
-              const tagIds = value || [];
+              const tagIds = Array.isArray(value) ? value : [];
               return (
                 <div key={field.key} className="field-group">
                   <label>{field.label}</label>

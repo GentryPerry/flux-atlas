@@ -150,7 +150,6 @@ export default function ImportModal({ onClose }) {
   const updateNodeFields = useNodeStore((s) => s.updateNodeFields);
 
   const [text, setText] = useState('');
-  const [parsed, setParsed] = useState(null);
   const [imported, setImported] = useState(false);
   const fileRef = useRef(null);
 

@@ -35,6 +35,7 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
   const [stageScale, setStageScale] = useState(1);
   const containerRef = useRef(null);
   const [polygonPoints, setPolygonPoints] = useState([]);
+  const [selectedTerritoryId, setSelectedTerritoryId] = useState(null);
 
   const activeMapId = useMapStore((s) => s.activeMapId);
   const allMaps = useMapStore((s) => s.maps);
@@ -48,6 +49,9 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
   const allConnections = useConnectionStore((s) => s.connections);
   const allTerritories = useTerritoryStore((s) => s.territories);
   const createTerritory = useTerritoryStore((s) => s.createTerritory);
+  const updateTerritory = useTerritoryStore((s) => s.updateTerritory);
+  const linkToNode = useTerritoryStore((s) => s.linkToNode);
+  const deleteTerritory = useTerritoryStore((s) => s.deleteTerritory);
 
   // Derive filtered values with useMemo instead of filtering in selectors
   const activeMap = useMemo(
@@ -66,13 +70,26 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
     () => allTerritories.filter((t) => t.mapId === activeMapId),
     [allTerritories, activeMapId]
   );
+  const selectedTerritory = useMemo(
+    () => territories.find((t) => t.id === selectedTerritoryId) || null,
+    [territories, selectedTerritoryId]
+  );
+  const territoryAssignableNodes = useMemo(
+    () => allNodes.filter(
+      (n) => n.campaignId === campaignId && ['faction', 'religion', 'realm'].includes(n.type)
+    ),
+    [allNodes, campaignId]
+  );
 
   // Load background image
   useEffect(() => {
-    if (!activeMap?.image) { setBgImage(null); return; }
+    if (!activeMap?.image) return undefined;
     const img = new window.Image();
     img.onload = () => setBgImage(img);
     img.src = activeMap.image;
+    return () => {
+      setBgImage(null);
+    };
   }, [activeMap?.image]);
 
   // Resize observer
@@ -107,7 +124,7 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
   }, [stageScale, stagePos]);
 
   // Double-click to finish polygon drawing
-  const handleStageDoubleClick = useCallback((e) => {
+  const handleStageDoubleClick = useCallback(() => {
     if (drawingMode === 'polygon' && polygonPoints.length >= 3) {
       // Create territory from polygon points
       createTerritory(campaignId, activeMapId, 'polygon', {
@@ -133,14 +150,16 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
 
     if (drawingMode === 'polygon') {
       // Add point to polygon
-      setPolygonPoints([...polygonPoints, { x, y }]);
+      setPolygonPoints((prev) => [...prev, { x, y }]);
+      setSelectedTerritoryId(null);
     } else if (placingType) {
       createNode(campaignId, activeMapId, placingType, x, y);
       onPlacingDone();
     } else {
       deselectNode();
+      setSelectedTerritoryId(null);
     }
-  }, [placingType, drawingMode, campaignId, activeMapId, createNode, onPlacingDone, deselectNode, stagePos, stageScale, polygonPoints]);
+  }, [placingType, drawingMode, campaignId, activeMapId, createNode, onPlacingDone, deselectNode, stagePos, stageScale]);
 
   const handleNodeDragEnd = useCallback((nodeId, e) => {
     moveNode(campaignId, nodeId, e.target.x(), e.target.y());
@@ -232,7 +251,11 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
                   opacity={territory.opacity}
                   stroke={territory.strokeColor}
                   strokeWidth={territory.strokeWidth}
-                  listening={false}
+                  listening={true}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                    setSelectedTerritoryId(territory.id);
+                  }}
                 />
               );
             } else if (territory.shapeType === 'rectangle') {
@@ -247,7 +270,11 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
                   opacity={territory.opacity}
                   stroke={territory.strokeColor}
                   strokeWidth={territory.strokeWidth}
-                  listening={false}
+                  listening={true}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                    setSelectedTerritoryId(territory.id);
+                  }}
                 />
               );
             } else if (territory.shapeType === 'circle') {
@@ -261,7 +288,11 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
                   opacity={territory.opacity}
                   stroke={territory.strokeColor}
                   strokeWidth={territory.strokeWidth}
-                  listening={false}
+                  listening={true}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                    setSelectedTerritoryId(territory.id);
+                  }}
                 />
               );
             }
@@ -484,6 +515,52 @@ export default function MapCanvas({ placingType, onPlacingDone, showConnections,
           })}
         </Layer>
       </Stage>
+
+      {selectedTerritory && (
+        <div className="territory-panel">
+          <div className="territory-panel-title">Territory</div>
+          <label style={{ fontSize: 11, marginBottom: 6, display: 'block' }}>Name</label>
+          <input
+            value={selectedTerritory.name || ''}
+            onChange={(e) => updateTerritory(campaignId, selectedTerritory.id, { name: e.target.value })}
+            placeholder="Territory name..."
+            style={{ marginBottom: 8 }}
+          />
+          <label style={{ fontSize: 11, marginBottom: 6, display: 'block' }}>Assign to</label>
+          <select
+            value={selectedTerritory.nodeId || ''}
+            onChange={(e) => {
+              const nextId = e.target.value || null;
+              linkToNode(campaignId, selectedTerritory.id, nextId);
+            }}
+            style={{ marginBottom: 8 }}
+          >
+            <option value="">Unassigned</option>
+            {territoryAssignableNodes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {(NODE_TYPES[n.type]?.label || n.type)} — {n.fields?.name || 'Unnamed'}
+              </option>
+            ))}
+          </select>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setSelectedTerritoryId(null)}
+            >
+              Close
+            </button>
+            <button
+              className="btn btn-danger btn-sm"
+              onClick={() => {
+                deleteTerritory(campaignId, selectedTerritory.id);
+                setSelectedTerritoryId(null);
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

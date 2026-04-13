@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import useCampaignStore from '../stores/campaignStore';
 import useMapStore from '../stores/mapStore';
 import useNodeStore from '../stores/nodeStore';
@@ -39,6 +40,7 @@ export default function WorkspaceView() {
   const [kanbanMode, setKanbanMode] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [drawingMode, setDrawingMode] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState(null); // { nodeId, x, y }
@@ -94,7 +96,16 @@ export default function WorkspaceView() {
 
   return (
     <div className="app-layout">
-      <MapSidebar />
+      <div className={`sidebar-shell ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <MapSidebar />
+        <button
+          className="sidebar-collapse-btn"
+          onClick={() => setSidebarCollapsed((v) => !v)}
+          title={sidebarCollapsed ? 'Expand map list' : 'Collapse map list'}
+        >
+          {sidebarCollapsed ? <CaretRight size={14} /> : <CaretLeft size={14} />}
+        </button>
+      </div>
       <div className="main-content">
         <MapToolbar
           placingType={placingType}

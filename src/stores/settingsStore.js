@@ -30,7 +30,9 @@ const useSettingsStore = create((set, get) => ({
 
   /** Persist current settings */
   _persist: (campaignId) => {
-    const { settingsOpen, settingsCategory, ...rest } = get();
+    const rest = { ...get() };
+    delete rest.settingsOpen;
+    delete rest.settingsCategory;
     localStorage.setItem(`flux_settings_${campaignId}`, JSON.stringify(rest));
   },
 
@@ -38,7 +40,9 @@ const useSettingsStore = create((set, get) => ({
   setSetting: (campaignId, key, value) => {
     set({ [key]: value });
     // Persist after update
-    const { settingsOpen, settingsCategory, ...rest } = { ...get(), [key]: value };
+    const rest = { ...get(), [key]: value };
+    delete rest.settingsOpen;
+    delete rest.settingsCategory;
     localStorage.setItem(`flux_settings_${campaignId}`, JSON.stringify(rest));
   },
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuid } from 'uuid';
+import useNodeStore from './nodeStore';
 
 /**
  * Connection store — manages connections between nodes.
@@ -27,6 +28,19 @@ const useConnectionStore = create((set, get) => ({
     const connections = [...get().connections, connection];
     set({ connections });
     localStorage.setItem(`flux_connections_${campaignId}`, JSON.stringify(connections));
+
+    // Cross-reference nodes so connections are queryable beyond visual lines.
+    const nodeState = useNodeStore.getState();
+    const updatedNodes = nodeState.nodes.map((node) => {
+      if (node.id !== nodeAId && node.id !== nodeBId) return node;
+      const otherId = node.id === nodeAId ? nodeBId : nodeAId;
+      const currentRefs = Array.isArray(node.tagIds) ? node.tagIds : [];
+      if (currentRefs.includes(otherId)) return node;
+      return { ...node, tagIds: [...currentRefs, otherId] };
+    });
+    useNodeStore.setState({ nodes: updatedNodes });
+    localStorage.setItem(`flux_nodes_${campaignId}`, JSON.stringify(updatedNodes));
+
     return connection;
   },
 
